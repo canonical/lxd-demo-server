@@ -1,0 +1,23 @@
+quota_cpu: 1
+quota_ram: 128
+quota_disk: 5
+quota_sessions: 2
+quota_time: 3000
+container: "my-base-container"
+image: "my-image"
+server_addr: "[::]:8080"
+server_banned_ips:
+    - 1.2.3.4
+server_console_only: false
+server_containers_max: 50
+server_cpu_count: 2
+server_ipv6_only: true
+server_maintenance: false
+server_terms: |-
+  By using the LXD demonstration server, you agree that:<br />
+  <ul>
+    <li>Access to this service may be revoked at any time for any reason</li>
+    <li>Access to this service is solely provided to evaluate LXD</li>
+    <li>Your IP address, access time and activity on the test server may be recorded</li>
+    <li>Any abuse of this service may lead to a ban or other applicable actions</li>
+  </ul>
