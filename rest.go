@@ -418,7 +418,7 @@ func restConsoleHandler(w http.ResponseWriter, r *http.Request) {
 
 			err = conn.WriteMessage(websocket.TextMessage, buf)
 			if err != nil {
-				return
+				break
 			}
 		}
 	}(conn, outRead)
@@ -429,7 +429,7 @@ func restConsoleHandler(w http.ResponseWriter, r *http.Request) {
 			mt, payload, err := conn.ReadMessage()
 			if err != nil {
 				if err != io.EOF {
-					return
+					break
 				}
 			}
 
@@ -439,7 +439,7 @@ func restConsoleHandler(w http.ResponseWriter, r *http.Request) {
 			case websocket.TextMessage:
 				w.Write(payload)
 			default:
-				return
+				break
 			}
 		}
 	}(conn, inWrite)
@@ -471,12 +471,16 @@ func restConsoleHandler(w http.ResponseWriter, r *http.Request) {
 
 			_, _, err = conn.ReadMessage()
 			if err != nil {
-				return
+				break
 			}
 		}
 	}
 
 	_, err = lxdDaemon.Exec(containerName, []string{"bash"}, env, inRead, outWrite, outWrite, handler)
+
+	inWrite.Close()
+	outRead.Close()
+
 	if err != nil {
 		http.Error(w, "Internal server error", 500)
 		return
