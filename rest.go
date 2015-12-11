@@ -163,6 +163,19 @@ func restStartHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	err = lxdDaemon.SetContainerConfig(containerName, "limits.cpu", fmt.Sprintf("%d", config.QuotaCPU))
+	if err != nil {
+		restStartError(w, err, containerUnknownError)
+		return
+	}
+
+	err = lxdDaemon.SetContainerConfig(containerName, "limits.memory", fmt.Sprintf("%d", config.QuotaRAM*1024*1024))
+	if err != nil {
+		restStartError(w, err, containerUnknownError)
+		return
+	}
+
+
 	if !config.ServerConsoleOnly {
 		err = lxdDaemon.SetContainerConfig(containerName, "user.user-data", fmt.Sprintf(`#cloud-config
 ssh_pwauth: True
@@ -179,14 +192,6 @@ users:
 			restStartError(w, err, containerUnknownError)
 			return
 		}
-	}
-
-	err = lxdDaemon.SetContainerConfig(containerName, "raw.lxc", fmt.Sprintf(`lxc.cgroup.memory.limit_in_bytes=%d
-lxc.cgroup.cpuset.cpus=%s`, config.QuotaRAM*1024*1024, getCPURange()))
-	if err != nil {
-		lxdForceDelete(lxdDaemon, containerName)
-		restStartError(w, err, containerUnknownError)
-		return
 	}
 
 	// Start the container
@@ -371,7 +376,7 @@ func restClientIP(r *http.Request) (string, string, error) {
 func restConsoleHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
-	// Get the id
+	// Get the id argument
 	id := r.FormValue("id")
 
 	// Get the container
@@ -379,6 +384,18 @@ func restConsoleHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil || containerName == "" {
 		http.Error(w, "Container not found", 404)
 		return
+	}
+
+	// Get console width and height
+	width := r.FormValue("width")
+	height := r.FormValue("height")
+
+	if width == "" {
+		width = "150"
+	}
+
+	if height == "" {
+		height = "20"
 	}
 
 	// Setup websocket with the client
@@ -455,8 +472,8 @@ func restConsoleHandler(w http.ResponseWriter, r *http.Request) {
 			msg := shared.ContainerExecControl{}
 			msg.Command = "window-resize"
 			msg.Args = make(map[string]string)
-			msg.Args["width"] = "150"
-			msg.Args["height"] = "20"
+			msg.Args["width"] = width
+			msg.Args["height"] = height
 
 			buf, err := json.Marshal(msg)
 			if err != nil {
