@@ -169,7 +169,7 @@ func restStartHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = lxdDaemon.SetContainerConfig(containerName, "limits.memory", fmt.Sprintf("%d", config.QuotaRAM*1024*1024))
+	err = lxdDaemon.SetContainerConfig(containerName, "limits.memory", fmt.Sprintf("%dMB", config.QuotaRAM))
 	if err != nil {
 		restStartError(w, err, containerUnknownError)
 		return
