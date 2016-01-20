@@ -150,48 +150,24 @@ func restStartHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = lxdDaemon.WaitForSuccess(resp.Operation)
-	if err != nil {
-		restStartError(w, err, containerUnknownError)
-		return
-	}
-
 	// Configure the container
-	err = lxdDaemon.SetContainerConfig(containerName, "security.nesting", "true")
+	ct, err := lxdDaemon.ContainerStatus(containerName)
 	if err != nil {
+		lxdForceDelete(lxdDaemon, containerName)
 		restStartError(w, err, containerUnknownError)
 		return
 	}
 
-	err = lxdDaemon.SetContainerConfig(containerName, "limits.cpu", fmt.Sprintf("%d", config.QuotaCPU))
+	ct.Config["security.nesting"] = "true"
+	ct.Config["limits.cpu"] = fmt.Sprintf("%d", config.QuotaCPU)
+	ct.Config["limits.memory"] = fmt.Sprintf("%dMB", config.QuotaRAM)
+	ct.Devices["root"] = shared.Device{"type": "disk", "path": "/", "size": fmt.Sprintf("%dGB", config.QuotaDisk)}
+
+	err = lxdDaemon.UpdateContainerConfig(containerName, ct.BriefState())
 	if err != nil {
+		lxdForceDelete(lxdDaemon, containerName)
 		restStartError(w, err, containerUnknownError)
 		return
-	}
-
-	err = lxdDaemon.SetContainerConfig(containerName, "limits.memory", fmt.Sprintf("%dMB", config.QuotaRAM))
-	if err != nil {
-		restStartError(w, err, containerUnknownError)
-		return
-	}
-
-
-	if !config.ServerConsoleOnly {
-		err = lxdDaemon.SetContainerConfig(containerName, "user.user-data", fmt.Sprintf(`#cloud-config
-ssh_pwauth: True
-manage_etc_hosts: True
-users:
- - name: %s
-   groups: sudo
-   plain_text_passwd: %s
-   lock_passwd: False
-   shell: /bin/bash
-`, containerUsername, containerPassword))
-		if err != nil {
-			lxdForceDelete(lxdDaemon, containerName)
-			restStartError(w, err, containerUnknownError)
-			return
-		}
 	}
 
 	// Start the container
