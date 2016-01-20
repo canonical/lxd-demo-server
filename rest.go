@@ -163,6 +163,19 @@ func restStartHandler(w http.ResponseWriter, r *http.Request) {
 	ct.Config["limits.memory"] = fmt.Sprintf("%dMB", config.QuotaRAM)
 	ct.Devices["root"] = shared.Device{"type": "disk", "path": "/", "size": fmt.Sprintf("%dGB", config.QuotaDisk)}
 
+	if !config.ServerConsoleOnly {
+		ct.Config["user.user-data"] = fmt.Sprintf(`#cloud-config
+ssh_pwauth: True
+manage_etc_hosts: True
+users:
+ - name: %s
+   groups: sudo
+   plain_text_passwd: %s
+   lock_passwd: False
+   shell: /bin/bash
+`, containerUsername, containerPassword)
+	}
+
 	err = lxdDaemon.UpdateContainerConfig(containerName, ct.BriefState())
 	if err != nil {
 		lxdForceDelete(lxdDaemon, containerName)
