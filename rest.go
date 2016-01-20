@@ -150,6 +150,12 @@ func restStartHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	err = lxdDaemon.WaitForSuccess(resp.Operation)
+	if err != nil {
+		restStartError(w, err, containerUnknownError)
+		return
+	}
+
 	// Configure the container
 	ct, err := lxdDaemon.ContainerStatus(containerName)
 	if err != nil {
