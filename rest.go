@@ -157,7 +157,7 @@ func restStartHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Configure the container
-	ct, err := lxdDaemon.ContainerStatus(containerName)
+	ct, err := lxdDaemon.ContainerInfo(containerName)
 	if err != nil {
 		lxdForceDelete(lxdDaemon, containerName)
 		restStartError(w, err, containerUnknownError)
@@ -182,7 +182,7 @@ users:
 `, containerUsername, containerPassword)
 	}
 
-	err = lxdDaemon.UpdateContainerConfig(containerName, ct.BriefState())
+	err = lxdDaemon.UpdateContainerConfig(containerName, ct.Brief())
 	if err != nil {
 		lxdForceDelete(lxdDaemon, containerName)
 		restStartError(w, err, containerUnknownError)
@@ -211,14 +211,14 @@ users:
 		timeout := 30
 		for timeout != 0 {
 			timeout--
-			ct, err := lxdDaemon.ContainerStatus(containerName)
+			ct, err := lxdDaemon.ContainerState(containerName)
 			if err != nil {
 				lxdForceDelete(lxdDaemon, containerName)
 				restStartError(w, err, containerUnknownError)
 				return
 			}
 
-			for _, ip := range ct.Status.Ips {
+			for _, ip := range ct.Ips {
 				if ip.Address == "" {
 					continue
 				}
