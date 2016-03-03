@@ -5,7 +5,7 @@ import (
 )
 
 func lxdForceDelete(d *lxd.Client, name string) error {
-	resp, err := d.Action(name, "stop", -1, true)
+	resp, err := d.Action(name, "stop", -1, true, false)
 	if err == nil {
 		d.WaitForSuccess(resp.Operation)
 	}

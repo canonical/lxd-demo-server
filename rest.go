@@ -190,7 +190,7 @@ users:
 	}
 
 	// Start the container
-	resp, err = lxdDaemon.Action(containerName, "start", -1, false)
+	resp, err = lxdDaemon.Action(containerName, "start", -1, false, false)
 	if err != nil {
 		lxdForceDelete(lxdDaemon, containerName)
 		restStartError(w, err, containerUnknownError)
@@ -218,28 +218,38 @@ users:
 				return
 			}
 
-			for _, ip := range ct.Ips {
-				if ip.Address == "" {
+			for netName, net := range ct.Network {
+				if !shared.StringInSlice(netName, []string{"eth0", "lxcbr0"}) {
 					continue
 				}
 
-				if ip.Interface != "eth0" && ip.Interface != "lxcbr0" {
-					continue
+				for _, addr := range net.Addresses {
+					if addr.Address == "" {
+						continue
+					}
+
+					if addr.Scope != "global" {
+						continue
+					}
+
+					if config.ServerIPv6Only && addr.Family != "inet6" {
+						continue
+					}
+
+					containerIP = addr.Address
+					break
 				}
 
-				if config.ServerIPv6Only && ip.Protocol != "IPV6" {
-					continue
+				if containerIP != "" {
+					break
 				}
-
-				containerIP = ip.Address
-				break
 			}
 
 			if containerIP != "" {
 				break
 			}
 
-			time.Sleep(1 * time.Second)
+			time.Sleep(500 * time.Millisecond)
 		}
 	} else {
 		containerIP = "console-only"
