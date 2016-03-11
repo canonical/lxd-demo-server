@@ -165,9 +165,21 @@ func restStartHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ct.Config["security.nesting"] = "true"
-	ct.Config["limits.cpu"] = fmt.Sprintf("%d", config.QuotaCPU)
-	ct.Config["limits.memory"] = fmt.Sprintf("%dMB", config.QuotaRAM)
-	ct.Devices["root"] = shared.Device{"type": "disk", "path": "/", "size": fmt.Sprintf("%dGB", config.QuotaDisk)}
+	if config.QuotaCPU > 0 {
+		ct.Config["limits.cpu"] = fmt.Sprintf("%d", config.QuotaCPU)
+	}
+
+	if config.QuotaRAM > 0 {
+		ct.Config["limits.memory"] = fmt.Sprintf("%dMB", config.QuotaRAM)
+	}
+
+	if config.QuotaProcesses > 0 {
+		ct.Config["limits.processes"] = fmt.Sprintf("%d", config.QuotaProcesses)
+	}
+
+	if config.QuotaDisk > 0 {
+		ct.Devices["root"] = shared.Device{"type": "disk", "path": "/", "size": fmt.Sprintf("%dGB", config.QuotaDisk)}
+	}
 
 	if !config.ServerConsoleOnly {
 		ct.Config["user.user-data"] = fmt.Sprintf(`#cloud-config

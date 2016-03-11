@@ -25,6 +25,7 @@ type serverConfig struct {
 	QuotaCPU            int      `yaml:"quota_cpu"`
 	QuotaRAM            int      `yaml:"quota_ram"`
 	QuotaDisk           int      `yaml:"quota_disk"`
+	QuotaProcesses      int      `yaml:"quota_processes"`
 	QuotaSessions       int      `yaml:"quota_sessions"`
 	QuotaTime           int      `yaml:"quota_time"`
 	Container           string   `yaml:"container"`
@@ -78,10 +79,6 @@ func parseConfig() error {
 
 	if config.ServerAddr == "" {
 		config.ServerAddr = ":8080"
-	}
-
-	if config.ServerCPUCount == 0 {
-		config.ServerCPUCount = 1
 	}
 
 	config.ServerTerms = strings.TrimRight(config.ServerTerms, "\n")
