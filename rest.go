@@ -138,11 +138,40 @@ func restStartHandler(w http.ResponseWriter, r *http.Request) {
 	containerPassword := petname.Adjective()
 	id := uuid.NewV4().String()
 
+	// Config
+	ctConfig := map[string]string{}
+
+	ctConfig["security.nesting"] = "true"
+	if config.QuotaCPU > 0 {
+		ctConfig["limits.cpu"] = fmt.Sprintf("%d", config.QuotaCPU)
+	}
+
+	if config.QuotaRAM > 0 {
+		ctConfig["limits.memory"] = fmt.Sprintf("%dMB", config.QuotaRAM)
+	}
+
+	if config.QuotaProcesses > 0 {
+		ctConfig["limits.processes"] = fmt.Sprintf("%d", config.QuotaProcesses)
+	}
+
+	if !config.ServerConsoleOnly {
+		ctConfig["user.user-data"] = fmt.Sprintf(`#cloud-config
+ssh_pwauth: True
+manage_etc_hosts: True
+users:
+ - name: %s
+   groups: sudo
+   plain_text_passwd: %s
+   lock_passwd: False
+   shell: /bin/bash
+`, containerUsername, containerPassword)
+	}
+
 	var resp *lxd.Response
 	if config.Container != "" {
-		resp, err = lxdDaemon.LocalCopy(config.Container, containerName, nil, nil, false)
+		resp, err = lxdDaemon.LocalCopy(config.Container, containerName, ctConfig, nil, false)
 	} else {
-		resp, err = lxdDaemon.Init(containerName, "local", config.Image, nil, nil, false)
+		resp, err = lxdDaemon.Init(containerName, "local", config.Image, nil, ctConfig, false)
 	}
 
 	if err != nil {
@@ -156,42 +185,15 @@ func restStartHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Configure the container
+	// Configure the container devices
 	ct, err := lxdDaemon.ContainerInfo(containerName)
 	if err != nil {
 		lxdForceDelete(lxdDaemon, containerName)
 		restStartError(w, err, containerUnknownError)
 		return
 	}
-
-	ct.Config["security.nesting"] = "true"
-	if config.QuotaCPU > 0 {
-		ct.Config["limits.cpu"] = fmt.Sprintf("%d", config.QuotaCPU)
-	}
-
-	if config.QuotaRAM > 0 {
-		ct.Config["limits.memory"] = fmt.Sprintf("%dMB", config.QuotaRAM)
-	}
-
-	if config.QuotaProcesses > 0 {
-		ct.Config["limits.processes"] = fmt.Sprintf("%d", config.QuotaProcesses)
-	}
-
 	if config.QuotaDisk > 0 {
 		ct.Devices["root"] = shared.Device{"type": "disk", "path": "/", "size": fmt.Sprintf("%dGB", config.QuotaDisk)}
-	}
-
-	if !config.ServerConsoleOnly {
-		ct.Config["user.user-data"] = fmt.Sprintf(`#cloud-config
-ssh_pwauth: True
-manage_etc_hosts: True
-users:
- - name: %s
-   groups: sudo
-   plain_text_passwd: %s
-   lock_passwd: False
-   shell: /bin/bash
-`, containerUsername, containerPassword)
 	}
 
 	err = lxdDaemon.UpdateContainerConfig(containerName, ct.Brief())
