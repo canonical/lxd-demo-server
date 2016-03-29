@@ -6,7 +6,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/dustinkirkland/golang-petname"
@@ -418,16 +417,6 @@ func restConsoleHandler(w http.ResponseWriter, r *http.Request) {
 		height = "20"
 	}
 
-	widthInt, err := strconv.Atoi(width)
-	if err != nil {
-		http.Error(w, "Invalid width value", 400)
-	}
-
-	heightInt, err := strconv.Atoi(height)
-	if err != nil {
-		http.Error(w, "Invalid width value", 400)
-	}
-
 	// Setup websocket with the client
 	var upgrader = websocket.Upgrader{
 		ReadBufferSize:  1024,
@@ -494,6 +483,28 @@ func restConsoleHandler(w http.ResponseWriter, r *http.Request) {
 	// control socket handler
 	handler := func(c *lxd.Client, conn *websocket.Conn) {
 		for {
+			w, err := conn.NextWriter(websocket.TextMessage)
+			if err != nil {
+				break
+			}
+
+			msg := shared.ContainerExecControl{}
+			msg.Command = "window-resize"
+			msg.Args = make(map[string]string)
+			msg.Args["width"] = width
+			msg.Args["height"] = height
+
+			buf, err := json.Marshal(msg)
+			if err != nil {
+				break
+			}
+			_, err = w.Write(buf)
+
+			w.Close()
+			if err != nil {
+				break
+			}
+
 			_, _, err = conn.ReadMessage()
 			if err != nil {
 				break
@@ -501,7 +512,7 @@ func restConsoleHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	_, err = lxdDaemon.Exec(containerName, []string{"bash"}, env, inRead, outWrite, outWrite, handler, widthInt, heightInt)
+	_, err = lxdDaemon.Exec(containerName, []string{"bash"}, env, inRead, outWrite, outWrite, handler, 0, 0)
 
 	inWrite.Close()
 	outRead.Close()
