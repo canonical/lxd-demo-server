@@ -491,7 +491,17 @@ func restConsoleHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}(conn, inWrite)
 
-	_, err = lxdDaemon.Exec(containerName, []string{"bash"}, env, inRead, outWrite, outWrite, nil, widthInt, heightInt)
+	// control socket handler
+	handler := func(c *lxd.Client, conn *websocket.Conn) {
+		for {
+			_, _, err = conn.ReadMessage()
+			if err != nil {
+				break
+			}
+		}
+	}
+
+	_, err = lxdDaemon.Exec(containerName, []string{"bash"}, env, inRead, outWrite, outWrite, handler, widthInt, heightInt)
 
 	inWrite.Close()
 	outRead.Close()
