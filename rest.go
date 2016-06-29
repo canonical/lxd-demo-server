@@ -172,7 +172,7 @@ users:
 	if config.Container != "" {
 		resp, err = lxdDaemon.LocalCopy(config.Container, containerName, ctConfig, nil, false)
 	} else {
-		resp, err = lxdDaemon.Init(containerName, "local", config.Image, nil, ctConfig, false)
+		resp, err = lxdDaemon.Init(containerName, "local", config.Image, nil, ctConfig, nil, false)
 	}
 
 	if err != nil {
@@ -455,7 +455,7 @@ func restConsoleHandler(w http.ResponseWriter, r *http.Request) {
 
 	// read handler
 	go func(conn *websocket.Conn, r io.Reader) {
-		in := shared.ReaderToChannel(r)
+		in := shared.ReaderToChannel(r, -1)
 
 		for {
 			buf, ok := <-in
