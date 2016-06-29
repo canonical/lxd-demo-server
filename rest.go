@@ -13,7 +13,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/lxc/lxd"
 	"github.com/lxc/lxd/shared"
-	"github.com/satori/go.uuid"
+	"github.com/pborman/uuid"
 )
 
 func restStatusHandler(w http.ResponseWriter, r *http.Request) {
@@ -137,7 +137,7 @@ func restStartHandler(w http.ResponseWriter, r *http.Request) {
 	containerName := fmt.Sprintf("tryit-%s", petname.Adjective())
 	containerUsername := petname.Adjective()
 	containerPassword := petname.Adjective()
-	id := uuid.NewV4().String()
+	id := uuid.NewRandom().String()
 
 	// Config
 	ctConfig := map[string]string{}
