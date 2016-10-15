@@ -37,7 +37,7 @@ Should do the trick.
 ## Running it
 
 To run your own, you should start by copying the example configuration
-file "lxd-demo.yml.example" to "lxd-demo.yml", then update its content
+file "lxd-demo.yaml.example" to "lxd-demo.yaml", then update its content
 according to your environment.
 
 You will either need a container to copy for every request or a

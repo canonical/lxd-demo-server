@@ -65,9 +65,9 @@ func main() {
 }
 
 func parseConfig() error {
-	data, err := ioutil.ReadFile("lxd-demo.yml")
+	data, err := ioutil.ReadFile("lxd-demo.yaml")
 	if os.IsNotExist(err) {
-		return fmt.Errorf("The configuration file (lxd-demo.yml) doesn't exist.")
+		return fmt.Errorf("The configuration file (lxd-demo.yaml) doesn't exist.")
 	} else if err != nil {
 		return fmt.Errorf("Unable to read the configuration: %s", err)
 	}
@@ -117,7 +117,7 @@ func run() error {
 		for {
 			select {
 			case ev := <-watcher.Event:
-				if ev.Name != "./lxd-demo.yml" {
+				if ev.Name != "./lxd-demo.yaml" {
 					continue
 				}
 
