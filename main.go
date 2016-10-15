@@ -13,7 +13,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/lxc/lxd"
-	"golang.org/x/exp/inotify"
+	"gopkg.in/fsnotify.v0"
 	"gopkg.in/yaml.v2"
 )
 
@@ -103,14 +103,14 @@ func run() error {
 	}
 
 	// Watch for configuration changes
-	watcher, err := inotify.NewWatcher()
+	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		return fmt.Errorf("Unable to setup inotify: %s", err)
+		return fmt.Errorf("Unable to setup fsnotify: %s", err)
 	}
 
 	err = watcher.Watch(".")
 	if err != nil {
-		return fmt.Errorf("Unable to setup inotify watch: %s", err)
+		return fmt.Errorf("Unable to setup fsnotify watch: %s", err)
 	}
 
 	go func() {
@@ -121,7 +121,7 @@ func run() error {
 					continue
 				}
 
-				if ev.Mask&inotify.IN_MODIFY != inotify.IN_MODIFY {
+				if !ev.IsModify() {
 					continue
 				}
 
