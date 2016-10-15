@@ -17,6 +17,11 @@ import (
 )
 
 func restStatusHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "Not implemented", 501)
+		return
+	}
+
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Content-Type", "application/json")
 
@@ -68,6 +73,11 @@ func restStatusHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func restTermsHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "Not implemented", 501)
+		return
+	}
+
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Content-Type", "application/json")
 
@@ -84,6 +94,11 @@ func restTermsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func restStartHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "Not implemented", 501)
+		return
+	}
+
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Content-Type", "application/json")
 
@@ -312,6 +327,11 @@ users:
 }
 
 func restInfoHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "Not implemented", 501)
+		return
+	}
+
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Content-Type", "application/json")
 
@@ -394,6 +414,11 @@ func restClientIP(r *http.Request) (string, string, error) {
 }
 
 func restConsoleHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "Not implemented", 501)
+		return
+	}
+
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	// Get the id argument
