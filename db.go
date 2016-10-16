@@ -64,25 +64,27 @@ func dbActive() ([][]interface{}, error) {
 	return result, nil
 }
 
-func dbGetContainer(id string) (string, string, string, string, int64, error) {
+func dbGetContainer(id string) (int64, string, string, string, string, int64, error) {
+	var sessionId int64
 	var containerName string
 	var containerIP string
 	var containerUsername string
 	var containerPassword string
 	var containerExpiry int64
 
-	rows, err := dbQuery(db, "SELECT container_name, container_ip, container_username, container_password, container_expiry FROM sessions WHERE status=0 AND uuid=?;", id)
+	sessionId = -1
+	rows, err := dbQuery(db, "SELECT id, container_name, container_ip, container_username, container_password, container_expiry FROM sessions WHERE status=0 AND uuid=?;", id)
 	if err != nil {
-		return "", "", "", "", 0, err
+		return -1, "", "", "", "", 0, err
 	}
 
 	defer rows.Close()
 
 	for rows.Next() {
-		rows.Scan(&containerName, &containerIP, &containerUsername, &containerPassword, &containerExpiry)
+		rows.Scan(&sessionId, &containerName, &containerIP, &containerUsername, &containerPassword, &containerExpiry)
 	}
 
-	return containerName, containerIP, containerUsername, containerPassword, containerExpiry, nil
+	return sessionId, containerName, containerIP, containerUsername, containerPassword, containerExpiry, nil
 }
 
 func dbNew(id string, containerName string, containerIP string, containerUsername string, containerPassword string, containerExpiry int64, requestDate int64, requestIP string, requestTerms string) (int64, error) {

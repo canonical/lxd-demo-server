@@ -114,6 +114,11 @@ func restStartHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Check Terms of Service
 	requestTerms := r.FormValue("terms")
+	if requestTerms == "" {
+		http.Error(w, "Missing terms hash", 400)
+		return
+	}
+
 	if requestTerms != config.ServerTermsHash {
 		restStartError(w, nil, containerInvalidTerms)
 		return
@@ -337,11 +342,15 @@ func restInfoHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Get the id
 	id := r.FormValue("id")
+	if id == "" {
+		http.Error(w, "Missing session id", 400)
+		return
+	}
 
 	// Get the container
-	containerName, containerIP, containerUsername, containerPassword, containerExpiry, err := dbGetContainer(id)
-	if err != nil || containerName == "" {
-		http.Error(w, "Container not found", 404)
+	sessionId, containerName, containerIP, containerUsername, containerPassword, containerExpiry, err := dbGetContainer(id)
+	if err != nil || sessionId == -1 {
+		http.Error(w, "Session not found", 404)
 		return
 	}
 
@@ -423,11 +432,15 @@ func restConsoleHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Get the id argument
 	id := r.FormValue("id")
+	if id == "" {
+		http.Error(w, "Missing session id", 400)
+		return
+	}
 
 	// Get the container
-	containerName, _, _, _, _, err := dbGetContainer(id)
-	if err != nil || containerName == "" {
-		http.Error(w, "Container not found", 404)
+	sessionId, containerName, _, _, _, _, err := dbGetContainer(id)
+	if err != nil || sessionId == -1 {
+		http.Error(w, "Session not found", 404)
 		return
 	}
 
