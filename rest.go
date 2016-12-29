@@ -13,6 +13,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/lxc/lxd"
 	"github.com/lxc/lxd/shared"
+	"github.com/lxc/lxd/shared/api"
 	"github.com/pborman/uuid"
 )
 
@@ -188,7 +189,7 @@ users:
 `, containerUsername, containerPassword)
 	}
 
-	var resp *lxd.Response
+	var resp *api.Response
 	if config.Container != "" {
 		resp, err = lxdDaemon.LocalCopy(config.Container, containerName, ctConfig, nil, false)
 	} else {
@@ -214,10 +215,10 @@ users:
 		return
 	}
 	if config.QuotaDisk > 0 {
-		ct.Devices["root"] = shared.Device{"type": "disk", "path": "/", "size": fmt.Sprintf("%dGB", config.QuotaDisk)}
+		ct.Devices["root"] = map[string]string{"type": "disk", "path": "/", "size": fmt.Sprintf("%dGB", config.QuotaDisk)}
 	}
 
-	err = lxdDaemon.UpdateContainerConfig(containerName, ct.Brief())
+	err = lxdDaemon.UpdateContainerConfig(containerName, ct.Writable())
 	if err != nil {
 		lxdForceDelete(lxdDaemon, containerName)
 		restStartError(w, err, containerUnknownError)
