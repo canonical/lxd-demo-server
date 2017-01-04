@@ -87,7 +87,7 @@ func dbGetContainer(id string, active bool) (int64, string, string, string, stri
 	sessionId = -1
 
 	if active {
-		rows, err = dbQuery(db, "SELECT id, container_name, container_ip, container_username, container_password, container_expiry FROM sessions WHERE status=1 AND uuid=?;", id)
+		rows, err = dbQuery(db, "SELECT id, container_name, container_ip, container_username, container_password, container_expiry FROM sessions WHERE status=0 AND uuid=?;", id)
 	} else {
 		rows, err = dbQuery(db, "SELECT id, container_name, container_ip, container_username, container_password, container_expiry FROM sessions WHERE uuid=?;", id)
 	}
