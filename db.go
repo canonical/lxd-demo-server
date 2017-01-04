@@ -42,6 +42,16 @@ CREATE TABLE IF NOT EXISTS sessions (
     request_ip VARCHAR(39) NOT NULL,
     request_terms VARCHAR(64) NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS feedback (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    session_id INTEGER NOT NULL,
+    rating INTEGER,
+    email VARCHAR(255),
+    email_use INTEGER,
+    feedback TEXT,
+    FOREIGN KEY (session_id) REFERENCES sessions (id) ON DELETE CASCADE
+);
 `)
 	if err != nil {
 		return err
@@ -64,16 +74,23 @@ func dbActive() ([][]interface{}, error) {
 	return result, nil
 }
 
-func dbGetContainer(id string) (int64, string, string, string, string, int64, error) {
+func dbGetContainer(id string, active bool) (int64, string, string, string, string, int64, error) {
 	var sessionId int64
 	var containerName string
 	var containerIP string
 	var containerUsername string
 	var containerPassword string
 	var containerExpiry int64
+	var err error
+	var rows *sql.Rows
 
 	sessionId = -1
-	rows, err := dbQuery(db, "SELECT id, container_name, container_ip, container_username, container_password, container_expiry FROM sessions WHERE status=0 AND uuid=?;", id)
+
+	if active {
+		rows, err = dbQuery(db, "SELECT id, container_name, container_ip, container_username, container_password, container_expiry FROM sessions WHERE status=1 AND uuid=?;", id)
+	} else {
+		rows, err = dbQuery(db, "SELECT id, container_name, container_ip, container_username, container_password, container_expiry FROM sessions WHERE uuid=?;", id)
+	}
 	if err != nil {
 		return -1, "", "", "", "", 0, err
 	}
@@ -85,6 +102,30 @@ func dbGetContainer(id string) (int64, string, string, string, string, int64, er
 	}
 
 	return sessionId, containerName, containerIP, containerUsername, containerPassword, containerExpiry, nil
+}
+
+func dbGetFeedback(id int64) (int64, int64, string, int64, string, error) {
+	var feedbackId int64
+	var rating int64
+	var email string
+	var emailUse int64
+	var feedback string
+
+	feedbackId = -1
+	rating = -1
+	emailUse = -1
+	rows, err := dbQuery(db, "SELECT id, rating, email, email_use, feedback FROM feedback WHERE session_id=?;", id)
+	if err != nil {
+		return -1, -1, "", -1, "", err
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		rows.Scan(&feedbackId, &rating, &email, &emailUse, &feedback)
+	}
+
+	return feedbackId, rating, email, emailUse, feedback, nil
 }
 
 func dbNew(id string, containerName string, containerIP string, containerUsername string, containerPassword string, containerExpiry int64, requestDate int64, requestIP string, requestTerms string) (int64, error) {
@@ -111,6 +152,41 @@ INSERT INTO sessions (
 	}
 
 	return containerID, nil
+}
+
+func dbRecordFeedback(id int64, feedback Feedback) error {
+	// Get the feedback
+	feedbackId, _, _, _, _, err := dbGetFeedback(id)
+	if err != nil {
+		return err
+	}
+
+	if feedbackId == -1 {
+		// Record new feedback
+		_, err := db.Exec(`
+INSERT INTO feedback (
+	session_id,
+	rating,
+	email,
+	email_use,
+	feedback) VALUES (?, ?, ?, ?, ?);
+`, id, feedback.Rating, feedback.Email, feedback.EmailUse, feedback.Message)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	// Update existing feedback
+	_, err = db.Exec(`
+UPDATE feedback SET rating=?, email=?, email_use=?, feedback=? WHERE session_id=?;
+`, feedback.Rating, feedback.Email, feedback.EmailUse, feedback.Message, id)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func dbExpire(id int64) error {

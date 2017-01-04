@@ -17,6 +17,116 @@ import (
 	"github.com/pborman/uuid"
 )
 
+type Feedback struct {
+	Rating   int
+	Email    string
+	EmailUse int
+	Message  string
+}
+
+func restFeedbackHandler(w http.ResponseWriter, r *http.Request) {
+	if !config.Feedback {
+		http.Error(w, "Feedback reporting is disabled", 400)
+		return
+	}
+
+	if r.Method == "POST" {
+		restFeedbackPostHandler(w, r)
+		return
+	}
+
+	if r.Method == "GET" {
+		restFeedbackGetHandler(w, r)
+		return
+	}
+
+	http.Error(w, "Not implemented", 501)
+}
+
+func restFeedbackPostHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Content-Type", "application/json")
+
+	// Get the id argument
+	id := r.FormValue("id")
+	if id == "" {
+		http.Error(w, "Missing session id", 400)
+		return
+	}
+
+	// Get the container
+	sessionId, _, _, _, _, sessionExpiry, err := dbGetContainer(id, false)
+	if err != nil || sessionId == -1 {
+		http.Error(w, "Session not found", 404)
+		return
+	}
+
+	// Check if we can still store feedback
+	if time.Now().Unix() > sessionExpiry+int64(config.FeedbackTimeout*60) {
+		http.Error(w, "Feedback timeout has been reached", 400)
+		return
+	}
+
+	// Parse request
+	feedback := Feedback{}
+
+	err = json.NewDecoder(r.Body).Decode(&feedback)
+	if err != nil {
+		http.Error(w, "Invalid JSON data", 400)
+		return
+	}
+
+	err = dbRecordFeedback(sessionId, feedback)
+	if err != nil {
+		http.Error(w, "Unable to record feedback data", 500)
+		return
+	}
+
+	return
+}
+
+func restFeedbackGetHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Content-Type", "application/json")
+
+	// Get the id argument
+	id := r.FormValue("id")
+	if id == "" {
+		http.Error(w, "Missing session id", 400)
+		return
+	}
+
+	// Get the container
+	sessionId, _, _, _, _, _, err := dbGetContainer(id, false)
+	if err != nil || sessionId == -1 {
+		http.Error(w, "Session not found", 404)
+		return
+	}
+
+	// Get the feedback
+	feedbackId, feedbackRating, feedbackEmail, feedbackEmailUse, feedbackComment, err := dbGetFeedback(sessionId)
+	if err != nil || feedbackId == -1 {
+		http.Error(w, "No existing feedback", 404)
+		return
+	}
+
+	// Generate the response
+	body := make(map[string]interface{})
+	body["rating"] = feedbackRating
+	body["email"] = feedbackEmail
+	body["email_use"] = feedbackEmailUse
+	body["feedback"] = feedbackComment
+
+	// Return to the client
+	err = json.NewEncoder(w).Encode(body)
+	if err != nil {
+		http.Error(w, "Internal server error", 500)
+		return
+	}
+
+	return
+}
+
 func restStatusHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		http.Error(w, "Not implemented", 501)
@@ -55,6 +165,7 @@ func restStatusHandler(w http.ResponseWriter, r *http.Request) {
 	body := make(map[string]interface{})
 	body["client_address"] = address
 	body["client_protocol"] = protocol
+	body["feedback"] = config.Feedback
 	body["server_console_only"] = config.ServerConsoleOnly
 	body["server_ipv6_only"] = config.ServerIPv6Only
 	if !config.ServerMaintenance && !failure {
@@ -84,7 +195,7 @@ func restTermsHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Generate the response
 	body := make(map[string]interface{})
-	body["hash"] = config.ServerTermsHash
+	body["hash"] = config.serverTermsHash
 	body["terms"] = config.ServerTerms
 
 	err := json.NewEncoder(w).Encode(body)
@@ -120,7 +231,7 @@ func restStartHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if requestTerms != config.ServerTermsHash {
+	if requestTerms != config.serverTermsHash {
 		restStartError(w, nil, containerInvalidTerms)
 		return
 	}
@@ -349,7 +460,7 @@ func restInfoHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get the container
-	sessionId, containerName, containerIP, containerUsername, containerPassword, containerExpiry, err := dbGetContainer(id)
+	sessionId, containerName, containerIP, containerUsername, containerPassword, containerExpiry, err := dbGetContainer(id, false)
 	if err != nil || sessionId == -1 {
 		http.Error(w, "Session not found", 404)
 		return
@@ -439,7 +550,7 @@ func restConsoleHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get the container
-	sessionId, containerName, _, _, _, _, err := dbGetContainer(id)
+	sessionId, containerName, _, _, _, _, err := dbGetContainer(id, true)
 	if err != nil || sessionId == -1 {
 		http.Error(w, "Session not found", 404)
 		return

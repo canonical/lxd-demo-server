@@ -1,11 +1,13 @@
+container: "my-base-container"
+image: "my-image"
+feedback: true
+feedback_timeout: 30
 quota_cpu: 1
 quota_ram: 128
 quota_disk: 5
 quota_sessions: 2
 quota_time: 3000
 quota_processes: 200
-container: "my-base-container"
-image: "my-image"
 server_addr: "[::]:8080"
 server_banned_ips:
     - 1.2.3.4

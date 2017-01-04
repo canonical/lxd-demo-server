@@ -22,23 +22,29 @@ var lxdDaemon *lxd.Client
 var config serverConfig
 
 type serverConfig struct {
-	QuotaCPU            int      `yaml:"quota_cpu"`
-	QuotaRAM            int      `yaml:"quota_ram"`
-	QuotaDisk           int      `yaml:"quota_disk"`
-	QuotaProcesses      int      `yaml:"quota_processes"`
-	QuotaSessions       int      `yaml:"quota_sessions"`
-	QuotaTime           int      `yaml:"quota_time"`
-	Container           string   `yaml:"container"`
-	Image               string   `yaml:"image"`
+	Container string `yaml:"container"`
+	Image     string `yaml:"image"`
+
+	Feedback        bool `yaml:"feedback"`
+	FeedbackTimeout int  `yaml:"feedback_timeout"`
+
+	QuotaCPU       int `yaml:"quota_cpu"`
+	QuotaDisk      int `yaml:"quota_disk"`
+	QuotaProcesses int `yaml:"quota_processes"`
+	QuotaRAM       int `yaml:"quota_ram"`
+	QuotaSessions  int `yaml:"quota_sessions"`
+	QuotaTime      int `yaml:"quota_time"`
+
 	ServerAddr          string   `yaml:"server_addr"`
 	ServerBannedIPs     []string `yaml:"server_banned_ips"`
 	ServerConsoleOnly   bool     `yaml:"server_console_only"`
-	ServerIPv6Only      bool     `yaml:"server_ipv6_only"`
-	ServerCPUCount      int      `yaml:"server_cpu_count"`
 	ServerContainersMax int      `yaml:"server_containers_max"`
+	ServerCPUCount      int      `yaml:"server_cpu_count"`
+	ServerIPv6Only      bool     `yaml:"server_ipv6_only"`
 	ServerMaintenance   bool     `yaml:"server_maintenance"`
 	ServerTerms         string   `yaml:"server_terms"`
-	ServerTermsHash     string
+
+	serverTermsHash string
 }
 
 type statusCode int
@@ -84,7 +90,7 @@ func parseConfig() error {
 	config.ServerTerms = strings.TrimRight(config.ServerTerms, "\n")
 	hash := sha256.New()
 	io.WriteString(hash, config.ServerTerms)
-	config.ServerTermsHash = fmt.Sprintf("%x", hash.Sum(nil))
+	config.serverTermsHash = fmt.Sprintf("%x", hash.Sum(nil))
 
 	if config.Container == "" && config.Image == "" {
 		return fmt.Errorf("No container or image specified in configuration")
@@ -177,6 +183,7 @@ func run() error {
 	r := mux.NewRouter()
 	r.HandleFunc("/1.0", restStatusHandler)
 	r.HandleFunc("/1.0/console", restConsoleHandler)
+	r.HandleFunc("/1.0/feedback", restFeedbackHandler)
 	r.HandleFunc("/1.0/info", restInfoHandler)
 	r.HandleFunc("/1.0/start", restStartHandler)
 	r.HandleFunc("/1.0/terms", restTermsHandler)
