@@ -39,7 +39,6 @@ type serverConfig struct {
 	ServerBannedIPs      []string `yaml:"server_banned_ips"`
 	ServerConsoleOnly    bool     `yaml:"server_console_only"`
 	ServerContainersMax  int      `yaml:"server_containers_max"`
-	ServerCPUCount       int      `yaml:"server_cpu_count"`
 	ServerIPv6Only       bool     `yaml:"server_ipv6_only"`
 	ServerMaintenance    bool     `yaml:"server_maintenance"`
 	ServerStatisticsKeys []string `yaml:"server_statistics_keys"`

@@ -13,7 +13,6 @@ server_banned_ips:
     - 1.2.3.4
 server_console_only: false
 server_containers_max: 50
-server_cpu_count: 2
 server_ipv6_only: true
 server_maintenance: false
 server_statistics_keys:
