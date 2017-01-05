@@ -16,6 +16,8 @@ server_containers_max: 50
 server_cpu_count: 2
 server_ipv6_only: true
 server_maintenance: false
+server_statistics_keys:
+    - 69280011-c8a5-4ef9-ae3d-e7caf4d06e06
 server_terms: |-
   By using the LXD demonstration server, you agree that:<br />
   <ul>

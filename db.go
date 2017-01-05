@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/mattn/go-sqlite3"
@@ -58,6 +59,67 @@ CREATE TABLE IF NOT EXISTS feedback (
 	}
 
 	return nil
+}
+
+func dbGetStats(period string, unique bool, network *net.IPNet) (int64, error) {
+	var count int64
+
+	// Deal with unique filter
+	what := "request_ip"
+	if unique {
+		what = "distinct request_ip"
+	}
+
+	// Deal with period filter
+	where := ""
+	if period == "current" {
+		where = "WHERE status=0"
+	} else if period == "hour" {
+		creation := time.Now().Add(-time.Hour).Unix()
+		where = fmt.Sprintf("WHERE request_date > %d", creation)
+	} else if period == "day" {
+		creation := time.Now().Add(-time.Hour * 24).Unix()
+		where = fmt.Sprintf("WHERE request_date > %d", creation)
+	} else if period == "week" {
+		creation := time.Now().Add(-time.Hour * 24 * 7).Unix()
+		where = fmt.Sprintf("WHERE request_date > %d", creation)
+	} else if period == "month" {
+		creation := time.Now().Add(-time.Hour * time.Duration(24*30.5)).Unix()
+		where = fmt.Sprintf("WHERE request_date > %d", creation)
+	} else if period == "year" {
+		creation := time.Now().Add(-time.Hour * time.Duration(24*365.25)).Unix()
+		where = fmt.Sprintf("WHERE request_date > %d", creation)
+	}
+
+	if network == nil {
+		err := db.QueryRow(fmt.Sprintf("SELECT count(%s) FROM sessions %s;", what, where)).Scan(&count)
+		if err != nil {
+			return -1, err
+		}
+	} else {
+		outfmt := []interface{}{""}
+
+		q := fmt.Sprintf("SELECT %s FROM sessions %s;", what, where)
+		result, err := dbQueryScan(db, q, nil, outfmt)
+		if err != nil {
+			return -1, err
+		}
+
+		for _, ip := range result {
+			netIp := net.ParseIP(ip[0].(string))
+			if netIp == nil {
+				continue
+			}
+
+			if !network.Contains(netIp) {
+				continue
+			}
+
+			count += 1
+		}
+	}
+
+	return count, nil
 }
 
 func dbActive() ([][]interface{}, error) {

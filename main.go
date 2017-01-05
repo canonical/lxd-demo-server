@@ -35,14 +35,15 @@ type serverConfig struct {
 	QuotaSessions  int `yaml:"quota_sessions"`
 	QuotaTime      int `yaml:"quota_time"`
 
-	ServerAddr          string   `yaml:"server_addr"`
-	ServerBannedIPs     []string `yaml:"server_banned_ips"`
-	ServerConsoleOnly   bool     `yaml:"server_console_only"`
-	ServerContainersMax int      `yaml:"server_containers_max"`
-	ServerCPUCount      int      `yaml:"server_cpu_count"`
-	ServerIPv6Only      bool     `yaml:"server_ipv6_only"`
-	ServerMaintenance   bool     `yaml:"server_maintenance"`
-	ServerTerms         string   `yaml:"server_terms"`
+	ServerAddr           string   `yaml:"server_addr"`
+	ServerBannedIPs      []string `yaml:"server_banned_ips"`
+	ServerConsoleOnly    bool     `yaml:"server_console_only"`
+	ServerContainersMax  int      `yaml:"server_containers_max"`
+	ServerCPUCount       int      `yaml:"server_cpu_count"`
+	ServerIPv6Only       bool     `yaml:"server_ipv6_only"`
+	ServerMaintenance    bool     `yaml:"server_maintenance"`
+	ServerStatisticsKeys []string `yaml:"server_statistics_keys"`
+	ServerTerms          string   `yaml:"server_terms"`
 
 	serverTermsHash string
 }
@@ -186,6 +187,7 @@ func run() error {
 	r.HandleFunc("/1.0/feedback", restFeedbackHandler)
 	r.HandleFunc("/1.0/info", restInfoHandler)
 	r.HandleFunc("/1.0/start", restStartHandler)
+	r.HandleFunc("/1.0/statistics", restStatisticsHandler)
 	r.HandleFunc("/1.0/terms", restTermsHandler)
 
 	err = http.ListenAndServe(config.ServerAddr, r)
