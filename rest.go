@@ -241,13 +241,7 @@ func restStatisticsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Return to client
-	body := make(map[string]interface{})
-	body["count"] = count
-	err = json.NewEncoder(w).Encode(body)
-	if err != nil {
-		http.Error(w, "Internal server error", 500)
-		return
-	}
+	w.Write([]byte(fmt.Sprintf("%d\n", count)))
 }
 
 func restTermsHandler(w http.ResponseWriter, r *http.Request) {
