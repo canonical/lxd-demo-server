@@ -1,5 +1,8 @@
 container: "my-base-container"
 image: "my-image"
+profiles:
+    - default
+    - docker
 feedback: true
 feedback_timeout: 30
 quota_cpu: 1

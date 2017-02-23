@@ -22,8 +22,9 @@ var lxdDaemon *lxd.Client
 var config serverConfig
 
 type serverConfig struct {
-	Container string `yaml:"container"`
-	Image     string `yaml:"image"`
+	Container string   `yaml:"container"`
+	Image     string   `yaml:"image"`
+	Profiles  []string `yaml:"profiles"`
 
 	Feedback        bool `yaml:"feedback"`
 	FeedbackTimeout int  `yaml:"feedback_timeout"`
