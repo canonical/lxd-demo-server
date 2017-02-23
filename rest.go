@@ -362,9 +362,9 @@ users:
 
 	var resp *api.Response
 	if config.Container != "" {
-		resp, err = lxdDaemon.LocalCopy(config.Container, containerName, ctConfig, nil, false)
+		resp, err = lxdDaemon.LocalCopy(config.Container, containerName, ctConfig, config.Profiles, false)
 	} else {
-		resp, err = lxdDaemon.Init(containerName, "local", config.Image, nil, ctConfig, nil, false)
+		resp, err = lxdDaemon.Init(containerName, "local", config.Image, &config.Profiles, ctConfig, nil, false)
 	}
 
 	if err != nil {
