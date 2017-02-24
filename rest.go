@@ -386,7 +386,13 @@ users:
 		return
 	}
 	if config.QuotaDisk > 0 {
-		ct.Devices["root"] = map[string]string{"type": "disk", "path": "/", "size": fmt.Sprintf("%dGB", config.QuotaDisk)}
+		_, ok := ct.ExpandedDevices["root"]
+		if ok {
+			ct.Devices["root"] = ct.ExpandedDevices["root"]
+			ct.Devices["root"]["size"] = fmt.Sprintf("%dGB", config.QuotaDisk)
+		} else {
+			ct.Devices["root"] = map[string]string{"type": "disk", "path": "/", "size": fmt.Sprintf("%dGB", config.QuotaDisk)}
+		}
 	}
 
 	err = lxdDaemon.UpdateContainerConfig(containerName, ct.Writable())
