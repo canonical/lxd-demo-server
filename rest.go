@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/dustinkirkland/golang-petname"
@@ -364,7 +365,17 @@ users:
 	if config.Container != "" {
 		resp, err = lxdDaemon.LocalCopy(config.Container, containerName, ctConfig, config.Profiles, false)
 	} else {
-		resp, err = lxdDaemon.Init(containerName, "local", config.Image, &config.Profiles, ctConfig, nil, false)
+		if strings.Contains(config.Image, ":") {
+			var remote string
+			remote, fingerprint := lxd.DefaultConfig.ParseRemoteAndContainer(config.Image)
+
+			if fingerprint == "" {
+				fingerprint = "default"
+			}
+			resp, err = lxdDaemon.Init(containerName, remote, fingerprint, &config.Profiles, ctConfig, nil, false)
+		} else {
+			resp, err = lxdDaemon.Init(containerName, "local", config.Image, &config.Profiles, ctConfig, nil, false)
+		}
 	}
 
 	if err != nil {
