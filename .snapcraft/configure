@@ -1,0 +1,2 @@
+#!/bin/sh
+exec vim.tiny "${SNAP_DATA}/lxd-demo.yaml"

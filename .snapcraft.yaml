@@ -1,0 +1,67 @@
+name: lxd-demo-server
+version: git
+grade: stable
+summary: LXD demo server
+description: |-
+ Let website visitors spawn test containers
+ This is the service behind https://linuxcontainers.org/lxd/try-it
+
+ It can be used to easily allow visitors on a website to spawn a
+ container, get a shell inside it and play around with some piece of
+ software for a limited amount of time.
+
+ Supported features:
+  - Get service status (available features, availability, addresses, ...)
+  - Read and validate terms of service
+  - Spawn a demo container
+  - Get info on running container
+  - Access container console
+  - Send feedback on demo experience
+
+confinement: strict
+
+apps:
+  daemon:
+    command: daemon.start
+    daemon: simple
+    plugs:
+      - lxd
+      - network
+      - network-bind
+
+  configure:
+    command: configure
+
+  database:
+    command: database
+
+parts:
+  lxd-demo-server:
+    source: .
+    build-packages:
+      - gcc
+      - libsqlite3-dev
+    stage-packages:
+      - sqlite3
+      - uuid-runtime
+      - vim-tiny
+    plugin: go
+    go-packages:
+      - github.com/lxc/lxd-demo-server
+    go-importpath: github.com/lxc/lxd-demo-server
+    organize:
+      usr/bin/sqlite3: bin/sqlite3
+      usr/bin/uuidgen: bin/uuidgen
+      usr/bin/vim.tiny: bin/vim.tiny
+    prime:
+      - bin/sqlite3
+      - bin/uuidgen
+      - bin/vim.tiny
+
+      - bin/lxd-demo-server
+    prepare: |-
+      sed -i "s/ osFchown(fd,uid,gid)/ 0/g" ../go/src/github.com/mattn/go-sqlite3/sqlite3-binding.c
+
+  wrappers:
+    plugin: dump
+    source: .snapcraft/

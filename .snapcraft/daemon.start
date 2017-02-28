@@ -1,0 +1,10 @@
+#!/bin/sh
+export LXD_DIR=/var/snap/lxd/common/lxd/
+
+cd "${SNAP_DATA}"
+
+if [ ! -e "lxd-demo.yaml" ]; then
+  cat "${SNAP}/lxd-demo.yaml.tpl" | sed "s/UUID/$(uuidgen)/g" > lxd-demo.yaml
+fi
+
+exec lxd-demo-server > "${SNAP_DATA}/lxd-demo-server.log" 2>&1
