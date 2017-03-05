@@ -182,6 +182,8 @@ func run() error {
 
 	// Setup the HTTP server
 	r := mux.NewRouter()
+	r.Handle("/", http.RedirectHandler("/static", http.StatusMovedPermanently))
+	r.PathPrefix("/static").Handler(http.StripPrefix("/static", http.FileServer(http.Dir("static/"))))
 	r.HandleFunc("/1.0", restStatusHandler)
 	r.HandleFunc("/1.0/console", restConsoleHandler)
 	r.HandleFunc("/1.0/feedback", restFeedbackHandler)
