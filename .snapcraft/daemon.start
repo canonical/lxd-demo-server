@@ -7,8 +7,7 @@ if [ ! -e "lxd-demo.yaml" ]; then
   cat "${SNAP}/lxd-demo.yaml.tpl" | sed "s/UUID/$(uuidgen)/g" > lxd-demo.yaml
 fi
 
-if [ ! -e "static" ]; then
-  ln -s "${SNAP}/static" static
-fi
+rm -f static
+ln -s "${SNAP}/static" static
 
 exec lxd-demo-server > "${SNAP_DATA}/lxd-demo-server.log" 2>&1
