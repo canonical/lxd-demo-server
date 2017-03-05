@@ -8,6 +8,9 @@ image: ubuntu:16.04
 profiles:
     - default
 
+# Command to spawn in the container
+command: ["bash"]
+
 # Enable the feedback API
 feedback: true
 feedback_timeout: 30

@@ -1,5 +1,6 @@
 container: "my-base-container"
 image: "my-image"
+command: ["bash"]
 profiles:
     - default
     - docker

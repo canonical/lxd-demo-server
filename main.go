@@ -25,6 +25,7 @@ type serverConfig struct {
 	Container string   `yaml:"container"`
 	Image     string   `yaml:"image"`
 	Profiles  []string `yaml:"profiles"`
+	Command   []string `yaml:"command"`
 
 	Feedback        bool `yaml:"feedback"`
 	FeedbackTimeout int  `yaml:"feedback_timeout"`
@@ -86,6 +87,10 @@ func parseConfig() error {
 
 	if config.ServerAddr == "" {
 		config.ServerAddr = ":8080"
+	}
+
+	if config.Command == nil {
+		config.Command = []string{"bash"}
 	}
 
 	config.ServerTerms = strings.TrimRight(config.ServerTerms, "\n")

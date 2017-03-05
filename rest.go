@@ -728,7 +728,7 @@ func restConsoleHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	_, err = lxdDaemon.Exec(containerName, []string{"bash"}, env, inRead, outWrite, outWrite, handler, widthInt, heightInt)
+	_, err = lxdDaemon.Exec(containerName, config.Command, env, inRead, outWrite, outWrite, handler, widthInt, heightInt)
 
 	inWrite.Close()
 	outRead.Close()
