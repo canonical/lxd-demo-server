@@ -4,16 +4,20 @@ image: ubuntu:16.04
 ## Or an existing container
 #container: some-container
 
+# Profile to use for the container
+profiles:
+    - default
+
 # Enable the feedback API
 feedback: true
 feedback_timeout: 30
 
 # Resource limitations
 quota_cpu: 1
+quota_processes: 200
 quota_ram: 256
 quota_sessions: 2
 quota_time: 1800
-quota_processes: 200
 ## Disk quotas only work when using btrfs or zfs
 #quota_disk: 5
 
