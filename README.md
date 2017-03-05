@@ -16,6 +16,26 @@ expiry, when the container expires, it's automatically deleted.
 The main client can be found at the URL above, with its source available here:  
 [https://github.com/lxc/linuxcontainers.org](https://github.com/lxc/linuxcontainers.org)
 
+## Installing on Ubuntu
+The easiest way to get the demo server running on Ubuntu is by using the snap package.
+
+First install and configure LXD itself:
+
+```
+sudo snap install lxd
+sudo lxd init
+```
+
+Then install and configure the LXD demo server:
+
+```
+sudo snap install lxd-demo-server
+sudo snap connect lxd-demo-server:lxd lxd:lxd
+sudo lxd-demo-server.configure
+```
+
+You can then access the server at: http://IP-ADDRESS:8080/
+
 ## Dependencies
 
 The server needs to be able to talk to a LXD daemon over the local unix
