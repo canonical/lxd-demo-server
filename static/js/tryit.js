@@ -71,7 +71,7 @@ $(document).ready(function() {
         var cell = createCell(element);
         var size = getSize(element, cell);
 
-        var height = Math.max(Math.round(window.innerHeight / 70), 45);
+        var height = Math.max(Math.round(window.innerHeight / 25), 15);
         var width = size.cols - 1;
 
         sock = new WebSocket("ws://"+tryit_server+"/1.0/console?id="+id+"&width="+width+"&height="+height);
