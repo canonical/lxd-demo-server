@@ -144,9 +144,22 @@ func run() error {
 	}()
 
 	// Connect to the LXD daemon
-	lxdDaemon, err = lxd.NewClient(&lxd.DefaultConfig, "local")
-	if err != nil {
-		return fmt.Errorf("Unable to connect to LXD: %s", err)
+	warning := false
+	for {
+		lxdDaemon, err = lxd.NewClient(&lxd.DefaultConfig, "local")
+		if err == nil {
+			break
+		}
+
+		if !warning {
+			fmt.Printf("Waiting for the LXD server to come online.\n")
+			warning = true
+		}
+		time.Sleep(time.Second)
+	}
+
+	if warning {
+		fmt.Printf("LXD is now available. Daemon starting.\n")
 	}
 
 	// Setup the database
