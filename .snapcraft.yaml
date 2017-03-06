@@ -18,6 +18,12 @@ description: |-
   - Access container console
   - Send feedback on demo experience
 
+ To install:
+  - sudo snap install lxd
+  - sudo lxd init
+  - sudo snap install lxd-demo-server
+  - sudo snap connect lxd-demo-server:lxd lxd:lxd
+
 confinement: strict
 
 apps:
