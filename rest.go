@@ -363,7 +363,7 @@ users:
 
 	var resp *api.Response
 	if config.Container != "" {
-		resp, err = lxdDaemon.LocalCopy(config.Container, containerName, ctConfig, config.Profiles, false)
+		resp, err = lxdDaemon.LocalCopy(config.Container, containerName, ctConfig, config.Profiles, false, true)
 	} else {
 		if strings.Contains(config.Image, ":") {
 			var remote string
