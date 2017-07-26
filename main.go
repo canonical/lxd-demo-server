@@ -12,13 +12,13 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/lxc/lxd"
+	"github.com/lxc/lxd/client"
 	"gopkg.in/fsnotify.v0"
 	"gopkg.in/yaml.v2"
 )
 
 // Global variables
-var lxdDaemon *lxd.Client
+var lxdDaemon lxd.ContainerServer
 var config serverConfig
 
 type serverConfig struct {
@@ -151,7 +151,7 @@ func run() error {
 	// Connect to the LXD daemon
 	warning := false
 	for {
-		lxdDaemon, err = lxd.NewClient(&lxd.DefaultConfig, "local")
+		lxdDaemon, err = lxd.ConnectLXDUnix("", nil)
 		if err == nil {
 			break
 		}

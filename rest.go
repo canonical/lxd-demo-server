@@ -7,12 +7,12 @@ import (
 	"net"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/dustinkirkland/golang-petname"
 	"github.com/gorilla/websocket"
-	"github.com/lxc/lxd"
+	"github.com/lxc/lxd/client"
+	lxdconfig "github.com/lxc/lxd/lxc/config"
 	"github.com/lxc/lxd/shared"
 	"github.com/lxc/lxd/shared/api"
 	"github.com/pborman/uuid"
@@ -361,21 +361,60 @@ users:
 `, containerUsername, containerPassword)
 	}
 
-	var resp *api.Response
+	var rop *lxd.RemoteOperation
 	if config.Container != "" {
-		resp, err = lxdDaemon.LocalCopy(config.Container, containerName, ctConfig, config.Profiles, false, true)
-	} else {
-		if strings.Contains(config.Image, ":") {
-			var remote string
-			remote, fingerprint := lxd.DefaultConfig.ParseRemoteAndContainer(config.Image)
-
-			if fingerprint == "" {
-				fingerprint = "default"
-			}
-			resp, err = lxdDaemon.Init(containerName, remote, fingerprint, &config.Profiles, ctConfig, nil, false)
-		} else {
-			resp, err = lxdDaemon.Init(containerName, "local", config.Image, &config.Profiles, ctConfig, nil, false)
+		args := lxd.ContainerCopyArgs{
+			Name:          containerName,
+			ContainerOnly: true,
 		}
+
+		source, _, err := lxdDaemon.GetContainer(config.Container)
+		if err != nil {
+			restStartError(w, err, containerUnknownError)
+			return
+		}
+
+		source.Config = ctConfig
+		source.Profiles = config.Profiles
+
+		rop, err = lxdDaemon.CopyContainer(lxdDaemon, *source, &args)
+	} else {
+		defaultConfig := lxdconfig.DefaultConfig
+
+		remote, fingerprint, err := defaultConfig.ParseRemote(config.Image)
+		if err != nil {
+			restStartError(w, err, containerUnknownError)
+			return
+		}
+
+		d, err := defaultConfig.GetImageServer(remote)
+		if err != nil {
+			restStartError(w, err, containerUnknownError)
+			return
+		}
+
+		if fingerprint == "" {
+			fingerprint = "default"
+		}
+
+		alias, _, err := d.GetImageAlias(fingerprint)
+		if err == nil {
+			fingerprint = alias.Target
+		}
+
+		imgInfo, _, err := d.GetImage(fingerprint)
+		if err != nil {
+			restStartError(w, err, containerUnknownError)
+			return
+		}
+
+		req := api.ContainersPost{
+			Name: containerName,
+		}
+		req.Config = ctConfig
+		req.Profiles = config.Profiles
+
+		rop, err = lxdDaemon.CreateContainerFromImage(d, *imgInfo, req)
 	}
 
 	if err != nil {
@@ -383,19 +422,20 @@ users:
 		return
 	}
 
-	err = lxdDaemon.WaitForSuccess(resp.Operation)
+	err = rop.Wait()
 	if err != nil {
 		restStartError(w, err, containerUnknownError)
 		return
 	}
 
 	// Configure the container devices
-	ct, err := lxdDaemon.ContainerInfo(containerName)
+	ct, etag, err := lxdDaemon.GetContainer(containerName)
 	if err != nil {
 		lxdForceDelete(lxdDaemon, containerName)
 		restStartError(w, err, containerUnknownError)
 		return
 	}
+
 	if config.QuotaDisk > 0 {
 		_, ok := ct.ExpandedDevices["root"]
 		if ok {
@@ -406,7 +446,14 @@ users:
 		}
 	}
 
-	err = lxdDaemon.UpdateContainerConfig(containerName, ct.Writable())
+	op, err := lxdDaemon.UpdateContainer(containerName, ct.Writable(), etag)
+	if err != nil {
+		lxdForceDelete(lxdDaemon, containerName)
+		restStartError(w, err, containerUnknownError)
+		return
+	}
+
+	err = op.Wait()
 	if err != nil {
 		lxdForceDelete(lxdDaemon, containerName)
 		restStartError(w, err, containerUnknownError)
@@ -414,14 +461,19 @@ users:
 	}
 
 	// Start the container
-	resp, err = lxdDaemon.Action(containerName, "start", -1, false, false)
+	req := api.ContainerStatePut{
+		Action:  "start",
+		Timeout: -1,
+	}
+
+	op, err = lxdDaemon.UpdateContainerState(containerName, req, "")
 	if err != nil {
 		lxdForceDelete(lxdDaemon, containerName)
 		restStartError(w, err, containerUnknownError)
 		return
 	}
 
-	err = lxdDaemon.WaitForSuccess(resp.Operation)
+	err = op.Wait()
 	if err != nil {
 		lxdForceDelete(lxdDaemon, containerName)
 		restStartError(w, err, containerUnknownError)
@@ -435,7 +487,7 @@ users:
 		timeout := 30
 		for timeout != 0 {
 			timeout--
-			ct, err := lxdDaemon.ContainerState(containerName)
+			ct, _, err := lxdDaemon.GetContainerState(containerName)
 			if err != nil {
 				lxdForceDelete(lxdDaemon, containerName)
 				restStartError(w, err, containerUnknownError)
@@ -697,7 +749,7 @@ func restConsoleHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}(conn, outRead)
 
-	// writer handler
+	// write handler
 	go func(conn *websocket.Conn, w io.Writer) {
 		for {
 			mt, payload, err := conn.ReadMessage()
@@ -719,7 +771,7 @@ func restConsoleHandler(w http.ResponseWriter, r *http.Request) {
 	}(conn, inWrite)
 
 	// control socket handler
-	handler := func(c *lxd.Client, conn *websocket.Conn) {
+	handler := func(conn *websocket.Conn) {
 		for {
 			_, _, err = conn.ReadMessage()
 			if err != nil {
@@ -728,13 +780,38 @@ func restConsoleHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	_, err = lxdDaemon.Exec(containerName, config.Command, env, inRead, outWrite, outWrite, handler, widthInt, heightInt)
+	req := api.ContainerExecPost{
+		Command:     config.Command,
+		WaitForWS:   true,
+		Interactive: true,
+		Environment: env,
+		Width:       widthInt,
+		Height:      heightInt,
+	}
 
-	inWrite.Close()
-	outRead.Close()
+	execArgs := lxd.ContainerExecArgs{
+		Stdin:    inRead,
+		Stdout:   outWrite,
+		Stderr:   outWrite,
+		Control:  handler,
+		DataDone: make(chan bool),
+	}
 
+	op, err := lxdDaemon.ExecContainer(containerName, req, &execArgs)
 	if err != nil {
 		http.Error(w, "Internal server error", 500)
 		return
 	}
+
+	err = op.Wait()
+	if err != nil {
+		http.Error(w, "Internal server error", 500)
+		return
+	}
+
+	<-execArgs.DataDone
+
+	inWrite.Close()
+	outRead.Close()
+
 }

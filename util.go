@@ -1,19 +1,26 @@
 package main
 
 import (
-	"github.com/lxc/lxd"
+	"github.com/lxc/lxd/client"
+	"github.com/lxc/lxd/shared/api"
 )
 
-func lxdForceDelete(d *lxd.Client, name string) error {
-	resp, err := d.Action(name, "stop", -1, true, false)
-	if err == nil {
-		d.WaitForSuccess(resp.Operation)
+func lxdForceDelete(d lxd.ContainerServer, name string) error {
+	req := api.ContainerStatePut{
+		Action:  "stop",
+		Timeout: -1,
+		Force:   true,
 	}
 
-	resp, err = d.Delete(name)
+	op, err := d.UpdateContainerState(name, req, "")
+	if err == nil {
+		op.Wait()
+	}
+
+	op, err = d.DeleteContainer(name)
 	if err != nil {
 		return err
 	}
 
-	return d.WaitForSuccess(resp.Operation)
+	return op.Wait()
 }
