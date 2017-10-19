@@ -19,10 +19,10 @@ import (
 )
 
 type Feedback struct {
-	Rating   int
-	Email    string
-	EmailUse int
-	Message  string
+	Rating   int    `json:"rating"`
+	Email    string `json:"email"`
+	EmailUse int    `json:"email_use"`
+	Message  string `json:"message"`
 }
 
 func restFeedbackHandler(w http.ResponseWriter, r *http.Request) {
