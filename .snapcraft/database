@@ -1,2 +1,2 @@
 #!/bin/sh
-exec sqlite3 "${SNAP_DATA}/lxd-demo.sqlite3"
+exec sqlite3 "${SNAP_DATA}/lxd-demo.sqlite3" "$@"
