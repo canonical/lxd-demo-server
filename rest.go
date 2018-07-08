@@ -372,7 +372,7 @@ users:
 `, containerUsername, containerPassword)
 	}
 
-	var rop *lxd.RemoteOperation
+	var rop lxd.RemoteOperation
 	if config.Container != "" {
 		args := lxd.ContainerCopyArgs{
 			Name:          containerName,
