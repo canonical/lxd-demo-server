@@ -42,7 +42,12 @@ apps:
     command: database
 
 parts:
+  go:
+    source-tag: go1.10.3
+
   lxd-demo-server:
+    after:
+      - go
     source: .
     build-packages:
       - gcc
