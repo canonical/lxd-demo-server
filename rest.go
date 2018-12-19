@@ -402,10 +402,16 @@ users:
 			return
 		}
 
-		d, err := defaultConfig.GetImageServer(remote)
-		if err != nil {
-			restStartError(w, err, containerUnknownError)
-			return
+		var d lxd.ImageServer
+
+		if remote == "local" {
+			d = lxdDaemon
+		} else {
+			d, err = defaultConfig.GetImageServer(remote)
+			if err != nil {
+				restStartError(w, err, containerUnknownError)
+				return
+			}
 		}
 
 		if fingerprint == "" {
