@@ -389,6 +389,10 @@ users:
 		source.Profiles = config.Profiles
 
 		rop, err = lxdDaemon.CopyContainer(lxdDaemon, *source, &args)
+		if err != nil {
+			restStartError(w, err, containerUnknownError)
+			return
+		}
 	} else {
 		defaultConfig := lxdconfig.DefaultConfig
 
@@ -426,11 +430,10 @@ users:
 		req.Profiles = config.Profiles
 
 		rop, err = lxdDaemon.CreateContainerFromImage(d, *imgInfo, req)
-	}
-
-	if err != nil {
-		restStartError(w, err, containerUnknownError)
-		return
+		if err != nil {
+			restStartError(w, err, containerUnknownError)
+			return
+		}
 	}
 
 	err = rop.Wait()
