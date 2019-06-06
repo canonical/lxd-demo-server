@@ -70,8 +70,14 @@ parts:
       - bin/vim.tiny
 
       - bin/lxd-demo-server
-    prepare: |-
+    override-build: |-
+      set -ex
+
       sed -i "s/ osFchown(fd,uid,gid)/ 0/g" ../go/src/github.com/mattn/go-sqlite3/sqlite3-binding.c
+
+      set +ex
+      snapcraftctl build
+      set -ex
 
   static:
     plugin: dump
