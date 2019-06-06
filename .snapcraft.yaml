@@ -1,5 +1,5 @@
 name: lxd-demo-server
-base: core
+base: core18
 version: git
 grade: stable
 summary: LXD demo server
