@@ -1,6 +1,6 @@
 # Source of the container
 ## Either an image (local or remote)
-image: ubuntu:16.04
+image: ubuntu:18.04
 ## Or an existing container
 #container: some-container
 
