@@ -1,4 +1,5 @@
 name: lxd-demo-server
+base: core
 version: git
 grade: stable
 summary: LXD demo server
@@ -42,12 +43,7 @@ apps:
     command: database
 
 parts:
-  go:
-    source-tag: go1.11.4
-
   lxd-demo-server:
-    after:
-      - go
     source: .
     build-packages:
       - gcc
