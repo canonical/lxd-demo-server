@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/canonical/lxd/client"
+	"github.com/fsnotify/fsnotify"
 	"github.com/gorilla/mux"
-	"github.com/lxc/lxd/client"
-	"gopkg.in/fsnotify.v0"
 	"gopkg.in/yaml.v2"
 )
 
@@ -119,8 +119,9 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("Unable to setup fsnotify: %s", err)
 	}
+	defer watcher.Close()
 
-	err = watcher.Watch(".")
+	err = watcher.Add(".")
 	if err != nil {
 		return fmt.Errorf("Unable to setup fsnotify watch: %s", err)
 	}
@@ -128,12 +129,12 @@ func run() error {
 	go func() {
 		for {
 			select {
-			case ev := <-watcher.Event:
+			case ev := <-watcher.Events:
 				if ev.Name != "./lxd-demo.yaml" {
 					continue
 				}
 
-				if !ev.IsModify() {
+				if ev.Op&fsnotify.Write != fsnotify.Write {
 					continue
 				}
 
@@ -142,7 +143,8 @@ func run() error {
 				if err != nil {
 					fmt.Printf("Failed to parse configuration: %s\n", err)
 				}
-			case err := <-watcher.Error:
+
+			case err := <-watcher.Errors:
 				fmt.Printf("Inotify error: %s\n", err)
 			}
 		}
@@ -195,8 +197,38 @@ func run() error {
 		time.AfterFunc(timeDuration, func() {
 			lxdForceDelete(lxdDaemon, containerName)
 			dbExpire(containerID)
+			updateHAProxy()
 		})
 	}
+
+	err = ensureCertPresent()
+	if err != nil {
+		return fmt.Errorf("Failed to ensure TLS certificate: %s", err)
+	}
+
+	// Start HAProxy
+	go func() {
+		err := startHAProxy()
+		if err != nil {
+			fmt.Printf("Failed to start HAProxy: %s\n", err)
+		}
+	}()
+
+	// Build the base image
+	go func() {
+		for {
+			// Run the task
+			err := updateImage(lxdDaemon)
+			if err != nil {
+				fmt.Printf("Failed to update image: %s\n", err)
+			} else {
+				fmt.Println("Image updated successfully")
+			}
+
+			// Wait 24h until next run
+			time.Sleep(24 * time.Hour)
+		}
+	}()
 
 	// Setup the HTTP server
 	r := mux.NewRouter()

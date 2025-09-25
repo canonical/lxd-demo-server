@@ -67,55 +67,61 @@ func dbGetStats(period string, unique bool, network *net.IPNet) (int64, error) {
 	// Deal with unique filter
 	what := "request_ip"
 	if unique {
-		what = "distinct request_ip"
+		what = "DISTINCT request_ip"
 	}
 
 	// Deal with period filter
-	where := ""
-	if period == "current" {
-		where = "WHERE status=0"
-	} else if period == "hour" {
-		creation := time.Now().Add(-time.Hour).Unix()
-		where = fmt.Sprintf("WHERE request_date > %d", creation)
-	} else if period == "day" {
-		creation := time.Now().Add(-time.Hour * 24).Unix()
-		where = fmt.Sprintf("WHERE request_date > %d", creation)
-	} else if period == "week" {
-		creation := time.Now().Add(-time.Hour * 24 * 7).Unix()
-		where = fmt.Sprintf("WHERE request_date > %d", creation)
-	} else if period == "month" {
-		creation := time.Now().Add(-time.Hour * time.Duration(24*30.5)).Unix()
-		where = fmt.Sprintf("WHERE request_date > %d", creation)
-	} else if period == "year" {
-		creation := time.Now().Add(-time.Hour * time.Duration(24*365.25)).Unix()
-		where = fmt.Sprintf("WHERE request_date > %d", creation)
+	where := "1=1"
+	var args []interface{}
+
+	switch period {
+	case "current":
+		where = "status = ?"
+		args = append(args, 0)
+	case "hour":
+		where = "request_date > ?"
+		args = append(args, time.Now().Add(-time.Hour).Unix())
+	case "day":
+		where = "request_date > ?"
+		args = append(args, time.Now().Add(-24*time.Hour).Unix())
+	case "week":
+		where = "request_date > ?"
+		args = append(args, time.Now().Add(-7*24*time.Hour).Unix())
+	case "month":
+		where = "request_date > ?"
+		args = append(args, time.Now().Add(-time.Hour*24*30).Unix()) // approximate month
+	case "year":
+		where = "request_date > ?"
+		args = append(args, time.Now().Add(-time.Hour*24*365).Unix()) // approximate year
 	}
 
 	if network == nil {
-		err := db.QueryRow(fmt.Sprintf("SELECT count(%s) FROM sessions %s;", what, where)).Scan(&count)
+		query := fmt.Sprintf("SELECT COUNT(%s) FROM sessions WHERE %s", what, where)
+		err := db.QueryRow(query, args...).Scan(&count)
 		if err != nil {
 			return -1, err
 		}
 	} else {
-		outfmt := []interface{}{""}
-
-		q := fmt.Sprintf("SELECT %s FROM sessions %s;", what, where)
-		result, err := dbQueryScan(db, q, nil, outfmt)
+		query := fmt.Sprintf("SELECT %s FROM sessions WHERE %s", what, where)
+		rows, err := db.Query(query, args...)
 		if err != nil {
 			return -1, err
 		}
+		defer rows.Close()
 
-		for _, ip := range result {
-			netIp := net.ParseIP(ip[0].(string))
-			if netIp == nil {
-				continue
+		for rows.Next() {
+			var ipStr string
+			if err := rows.Scan(&ipStr); err != nil {
+				return -1, err
 			}
 
-			if !network.Contains(netIp) {
-				continue
+			netIP := net.ParseIP(ipStr)
+			if netIP != nil && network.Contains(netIP) {
+				count++
 			}
-
-			count += 1
+		}
+		if err := rows.Err(); err != nil {
+			return -1, err
 		}
 	}
 
@@ -123,11 +129,13 @@ func dbGetStats(period string, unique bool, network *net.IPNet) (int64, error) {
 }
 
 func dbActive() ([][]interface{}, error) {
-	q := fmt.Sprintf("SELECT id, container_name, container_expiry FROM sessions WHERE status=0;")
+	q := fmt.Sprintf("SELECT id, container_name, container_expiry, uuid, container_ip FROM sessions WHERE status=0;")
 	var containerID int
 	var containerName string
 	var containerExpiry int
-	outfmt := []interface{}{containerID, containerName, containerExpiry}
+	var containerUUID string
+	var containerIP string
+	outfmt := []interface{}{containerID, containerName, containerExpiry, containerUUID, containerIP}
 	result, err := dbQueryScan(db, q, nil, outfmt)
 	if err != nil {
 		return nil, err

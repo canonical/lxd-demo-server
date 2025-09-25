@@ -50,6 +50,7 @@ $(document).ready(function() {
         var secondsSpan = clock.querySelector('.seconds');
 
         function updateClock() {
+            updateUiLink();
             var t = getTimeRemaining(endtime);
 
             var minutes = Math.floor(t / 60);
@@ -66,6 +67,19 @@ $(document).ready(function() {
 
         updateClock();
         var timeinterval = setInterval(updateClock, 1000);
+    }
+
+    function updateUiLink() {
+        const link = document.getElementById('try-lxd-link');
+        const params = new URLSearchParams(window.location.search);
+        const id = params.get('id');
+
+        if (id) {
+            const hostnameParts = window.location.hostname.split('.');
+            const subdomain = hostnameParts[0]; // 'try-lxd'
+            const domain = hostnameParts.slice(1).join('.');
+            link.href = `https://${id}.${subdomain}.${domain}`;
+        }
     }
 
     function setupConsole(id) {
@@ -249,9 +263,13 @@ $(document).ready(function() {
         });
     }
 
+    $('#tryit_checkbox').click(function() {
+        $('#tryit_accept').prop('disabled', function(i, v) { return !v; });
+    });
+
     $('#tryit_accept').click(function() {
         $('#tryit_terms_panel').css("display", "none");
-        $('#tryit_accept').css("display", "none");
+        $('#tryit_start_confirmations').css("display", "none");
         $('#tryit_progress').css("display", "inherit");
 
         $.ajax({
@@ -281,22 +299,28 @@ $(document).ready(function() {
                 return
             }
 
-            $('.tryit_container_console').text(data.id);
-            $('.tryit_container_ip').text(data.ip);
-            $('.tryit_container_fqdn').text(data.fqdn);
-            $('.tryit_container_username').text(data.username);
-            $('.tryit_container_password').text(data.password);
-            initializeClock('tryit_clock', data.expiry);
+            $('#tryit_progress').css("display", "none");
+            $('#tryit_boot_ui').css("display", "inherit");
 
-            $('#tryit_status_panel').css("display", "none");
-            $('#tryit_start_panel').css("display", "none");
-            $('#tryit_info_panel').css("display", "inherit");
-            $('#tryit_console_panel').css("display", "inherit");
-            $('#tryit_examples_panel').css("display", "inherit");
+            setTimeout(() => {
+                $('.tryit_container_console').text(data.id);
+                $('.tryit_container_ip').text(data.ip);
+                $('.tryit_container_fqdn').text(data.fqdn);
+                $('.tryit_container_username').text(data.username);
+                $('.tryit_container_password').text(data.password);
+                initializeClock('tryit_clock', data.expiry);
 
-            tryit_console = data.id;
-            window.history.pushState("", "", "?id="+tryit_console);
-            setupConsole(tryit_console);
+                $('#tryit_status_panel').css("display", "none");
+                $('#tryit_start_panel').css("display", "none");
+                $('#tryit_info_panel').css("display", "inherit");
+                $('#tryit_console_panel').css("display", "inherit");
+                $('#tryit_examples_panel').css("display", "inherit");
+
+                tryit_console = data.id;
+                window.history.pushState("", "", "?id="+tryit_console);
+                setupConsole(tryit_console);
+            }, 30000); // Delay to give the web ui enough time to boot
+
         });
     });
 

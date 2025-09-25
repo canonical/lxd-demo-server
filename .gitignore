@@ -1,3 +1,6 @@
 lxd-demo-server
 lxd-demo.sqlite3
 lxd-demo.yaml
+*.snap
+vendor/*
+.idea/*

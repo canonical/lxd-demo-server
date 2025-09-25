@@ -6,15 +6,16 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"slices"
 	"strconv"
 	"time"
 
+	"github.com/canonical/lxd/client"
+	lxdconfig "github.com/canonical/lxd/lxc/config"
+	"github.com/canonical/lxd/shared"
+	"github.com/canonical/lxd/shared/api"
 	"github.com/dustinkirkland/golang-petname"
 	"github.com/gorilla/websocket"
-	"github.com/lxc/lxd/client"
-	lxdconfig "github.com/lxc/lxd/lxc/config"
-	"github.com/lxc/lxd/shared"
-	"github.com/lxc/lxd/shared/api"
 	"github.com/pborman/uuid"
 )
 
@@ -44,7 +45,6 @@ func restFeedbackHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "OPTIONS" {
 		origin := r.Header.Get("Origin")
 		if origin != "" {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 		}
@@ -56,7 +56,6 @@ func restFeedbackHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func restFeedbackPostHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Content-Type", "application/json")
 
 	// Get the id argument
@@ -98,7 +97,6 @@ func restFeedbackPostHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func restFeedbackGetHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Content-Type", "application/json")
 
 	// Get the id argument
@@ -145,7 +143,6 @@ func restStatusHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Content-Type", "application/json")
 
 	var failure bool
@@ -204,12 +201,11 @@ func restStatisticsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Content-Type", "application/json")
 
 	// Validate API key
 	requestKey := r.FormValue("key")
-	if !shared.StringInSlice(requestKey, config.ServerStatisticsKeys) {
+	if !slices.Contains(config.ServerStatisticsKeys, requestKey) {
 		http.Error(w, "Invalid authentication key", 401)
 		return
 	}
@@ -223,7 +219,7 @@ func restStatisticsHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Time period filtering
 	requestPeriod := r.FormValue("period")
-	if !shared.StringInSlice(requestPeriod, []string{"", "total", "current", "hour", "day", "week", "month", "year"}) {
+	if !slices.Contains([]string{"", "total", "current", "hour", "day", "week", "month", "year"}, requestPeriod) {
 		http.Error(w, "Invalid period", 400)
 		return
 	}
@@ -262,7 +258,6 @@ func restTermsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Content-Type", "application/json")
 
 	// Generate the response
@@ -283,7 +278,11 @@ func restStartHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	if config.ServerMaintenance {
+		restStartError(w, nil, serverMaintenance)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 
 	body := make(map[string]interface{})
@@ -309,7 +308,7 @@ func restStartHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check for banned users
-	if shared.StringInSlice(requestIP, config.ServerBannedIPs) {
+	if slices.Contains(config.ServerBannedIPs, requestIP) {
 		restStartError(w, nil, containerUserBanned)
 		return
 	}
@@ -346,17 +345,12 @@ func restStartHandler(w http.ResponseWriter, r *http.Request) {
 	// Config
 	ctConfig := map[string]string{}
 
-	ctConfig["security.nesting"] = "true"
 	if config.QuotaCPU > 0 {
 		ctConfig["limits.cpu"] = fmt.Sprintf("%d", config.QuotaCPU)
 	}
 
 	if config.QuotaRAM > 0 {
 		ctConfig["limits.memory"] = fmt.Sprintf("%dMB", config.QuotaRAM)
-	}
-
-	if config.QuotaProcesses > 0 {
-		ctConfig["limits.processes"] = fmt.Sprintf("%d", config.QuotaProcesses)
 	}
 
 	if !config.ServerConsoleOnly {
@@ -396,7 +390,7 @@ users:
 	} else {
 		defaultConfig := lxdconfig.DefaultConfig
 
-		remote, fingerprint, err := defaultConfig.ParseRemote(config.Image)
+		remote, fingerprint, err := defaultConfig().ParseRemote(config.Image)
 		if err != nil {
 			restStartError(w, err, containerUnknownError)
 			return
@@ -407,7 +401,7 @@ users:
 		if remote == "local" {
 			d = lxdDaemon
 		} else {
-			d, err = defaultConfig.GetImageServer(remote)
+			d, err = defaultConfig().GetImageServer(remote)
 			if err != nil {
 				restStartError(w, err, containerUnknownError)
 				return
@@ -429,13 +423,14 @@ users:
 			return
 		}
 
-		req := api.ContainersPost{
+		req := api.InstancesPost{
 			Name: containerName,
+			Type: "virtual-machine",
 		}
 		req.Config = ctConfig
 		req.Profiles = config.Profiles
 
-		rop, err = lxdDaemon.CreateContainerFromImage(d, *imgInfo, req)
+		rop, err = lxdDaemon.CreateInstanceFromImage(d, *imgInfo, req)
 		if err != nil {
 			restStartError(w, err, containerUnknownError)
 			return
@@ -515,7 +510,7 @@ users:
 			}
 
 			for netName, net := range ct.Network {
-				if !shared.StringInSlice(netName, []string{"eth0", "lxcbr0"}) {
+				if !slices.Contains([]string{"eth0", "lxcbr0"}, netName) {
 					continue
 				}
 
@@ -571,6 +566,7 @@ users:
 	}
 
 	containerID, err := dbNew(id, containerName, containerIP, containerUsername, containerPassword, containerExpiry, requestDate, requestIP, requestTerms)
+	updateHAProxy()
 	if err != nil {
 		lxdForceDelete(lxdDaemon, containerName)
 		restStartError(w, err, containerUnknownError)
@@ -580,6 +576,7 @@ users:
 	time.AfterFunc(duration, func() {
 		lxdForceDelete(lxdDaemon, containerName)
 		dbExpire(containerID)
+		updateHAProxy()
 	})
 
 	// Return to the client
@@ -598,7 +595,6 @@ func restInfoHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Content-Type", "application/json")
 
 	// Get the id
@@ -689,7 +685,10 @@ func restConsoleHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	if config.ServerMaintenance {
+		restStartError(w, nil, serverMaintenance)
+		return
+	}
 
 	// Get the id argument
 	id := r.FormValue("id")

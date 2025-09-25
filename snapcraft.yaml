@@ -1,0 +1,89 @@
+name: lxd-demo-server
+base: core24
+version: git
+grade: stable
+summary: LXD demo server
+description: |
+  Let website visitors spawn test containers.
+
+  It can be used to easily allow visitors on a website to spawn a
+  container, get a shell inside it and play around with some piece of
+  software for a limited amount of time.
+
+  Supported features:
+    - Get service status (available features, availability, addresses, ...)
+    - Read and validate terms of service
+    - Spawn a demo container
+    - Get info on running container
+    - Access container console
+    - Send feedback on demo experience
+
+  To install:
+    - sudo snap install lxd
+    - sudo lxd init
+    - sudo snap install lxd-demo-server
+    - sudo snap connect lxd-demo-server:lxd lxd:lxd
+
+confinement: strict
+
+apps:
+  daemon:
+    command: bin/daemon.start
+    daemon: simple
+    plugs:
+      - lxd
+      - network
+      - network-bind
+
+  configure:
+    command: bin/configure
+
+  database:
+    command: bin/database
+
+parts:
+  lxd-demo-server:
+    plugin: go
+    source: .
+    build-snaps:
+      - go/latest/stable
+    build-packages:
+      - gcc
+      - libsqlite3-dev
+    stage-packages:
+      - sqlite3
+      - uuid-runtime
+      - vim-tiny
+      - haproxy
+    organize:
+      usr/bin/sqlite3: bin/sqlite3
+      usr/bin/uuidgen: bin/uuidgen
+      usr/bin/vim.tiny: bin/vim.tiny
+      usr/sbin/haproxy: bin/haproxy
+    prime:
+      - bin/sqlite3
+      - bin/uuidgen
+      - bin/vim.tiny
+      - bin/haproxy
+      - lib/liblua*
+
+      - bin/lxd-demo-server
+    override-build: |
+      set -ex
+      set +ex
+      snapcraftctl build
+      cp -r $SNAPCRAFT_PART_INSTALL/usr/lib/*/liblua5.4.so.0 $SNAPCRAFT_PART_INSTALL/lib/liblua5.4.so.0
+      cp -r $SNAPCRAFT_PART_INSTALL/usr/lib/*/liblua5.4.so.0.0.0 $SNAPCRAFT_PART_INSTALL/lib/liblua5.4.so.0.0.0
+      set -ex
+
+  static:
+    plugin: dump
+    source: static
+    organize:
+      ./*: static/
+
+  wrappers:
+    plugin: dump
+    source: bin/
+    organize:
+      ./*: bin/
